@@ -1,0 +1,99 @@
+Pythonテストの書き方
+
+単体テストの重要性
+
+単体テストは、コードの品質を保証し、リファクタリングを安全に行うために不可欠です。
+
+pytestの基本
+
+インストール
+
+pip install pytest
+
+基本的なテストの書き方
+
+# test_calculator.py
+
+def add(a, b):
+    return a + b
+
+def test_add():
+    assert add(2, 3) == 5
+    assert add(-1, 1) == 0
+    assert add(0, 0) == 0
+
+テストの実行
+
+pytest test_calculator.py
+
+テストのベストプラクティス
+
+1. テスト名は明確に
+
+test_add_positive_numbers()
+test_add_negative_numbers()
+test_add_zero()
+
+2. AAA パターン（Arrange-Act-Assert）
+
+def test_user_creation():
+    # Arrange: テストデータの準備
+    username = "testuser"
+    email = "test@example.com"
+    
+    # Act: テスト対象の実行
+    user = User(username, email)
+    
+    # Assert: 結果の検証
+    assert user.username == username
+    assert user.email == email
+
+3. フィクスチャの活用
+
+import pytest
+
+@pytest.fixture
+def sample_data():
+    return {"name": "Test", "value": 100}
+
+def test_with_fixture(sample_data):
+    assert sample_data["name"] == "Test"
+
+4. パラメータ化テスト
+
+@pytest.mark.parametrize("input,expected", [
+    (2, 4),
+    (3, 9),
+    (4, 16),
+])
+def test_square(input, expected):
+    assert input ** 2 == expected
+
+モックの使用
+
+from unittest.mock import Mock, patch
+
+def test_api_call():
+    with patch('requests.get') as mock_get:
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = {"data": "test"}
+        
+        result = fetch_data()
+        assert result["data"] == "test"
+
+カバレッジの測定
+
+pytest --cov=myproject tests/
+
+継続的インテグレーション
+
+GitHub Actionsなどを使用して、プッシュ時に自動テストを実行することを推奨します。
+
+まとめ
+
+- pytestを使用する
+- テスト名は明確に
+- AAAパターンを守る
+- フィクスチャとパラメータ化を活用
+- モックで外部依存を分離
+- カバレッジを測定する

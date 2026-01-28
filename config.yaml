@@ -1,0 +1,36 @@
+# === エンベディング設定 ===
+embedding:
+  model: "gemini-embedding-001"           # Geminiモデル名
+  output_dimensionality: 768              # 出力次元数（768 / 1536 / 3072）
+  batch_size: 100                         # 1回のAPI呼び出しあたりの最大テキスト数
+  task_type_document: "RETRIEVAL_DOCUMENT" # ドキュメント埋め込み時のtask_type
+  task_type_query: "RETRIEVAL_QUERY"       # クエリ埋め込み時のtask_type
+
+# === チャンク分割設定 ===
+chunker:
+  max_chunk_chars: 3000                   # チャンクサイズ上限（文字数）
+  min_chunk_chars: 50                     # これ以下のチャンクは破棄
+  heading_levels: [1, 2, 3]              # Markdown分割に使う見出しレベル
+
+# === ChromaDB設定 ===
+chromadb:
+  collection_name: "documents"            # コレクション名
+  hnsw_space: "cosine"                    # 距離関数（cosine / l2 / ip）
+  hnsw_construction_ef: 200               # インデックス構築時の探索幅（精度↑ 構築速度↓）
+  hnsw_search_ef: 100                     # 検索時の探索幅（精度↑ 検索速度↓）
+  hnsw_M: 16                              # HNSWグラフの接続数（精度↑ メモリ↑）
+
+# === 検索設定 ===
+search:
+  default_top_k: 5                        # デフォルトの返却件数
+
+# === API リトライ設定 ===
+retry:
+  max_retries: 3                          # 最大リトライ回数
+  base_delay: 1.0                         # 初回リトライ待機秒数
+  backoff_factor: 2.0                     # 待機時間の倍率
+
+# === ファイルスキャン設定 ===
+scanner:
+  file_extensions: [".md", ".txt"]        # スキャン対象拡張子
+  exclude_dirs: [".rag-index", "data", ".git", "__pycache__", "node_modules"]
