@@ -24,21 +24,22 @@ class Embedder:
     def __init__(self, embedding_config: EmbeddingConfig, retry_config: RetryConfig):
         """
         Initialize Embedder.
-        
+
         Args:
             embedding_config: Embedding configuration
             retry_config: Retry configuration
         """
         self.embedding_config = embedding_config
         self.retry_config = retry_config
-        
+        self.api_call_count = 0  # API call counter
+
         # Get API key from environment
         api_key = os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY')
         if not api_key:
             raise ValueError(
                 "GEMINI_API_KEY or GOOGLE_API_KEY environment variable must be set"
             )
-        
+
         # Initialize client
         try:
             # Try new google-genai SDK
@@ -84,18 +85,31 @@ class Embedder:
     def embed_query(self, query: str) -> List[float]:
         """
         Generate embedding for a query.
-        
+
         Args:
             query: Query text
-            
+
         Returns:
             Embedding vector
         """
         embeddings = self.embed_texts(
-            [query], 
+            [query],
             task_type=self.embedding_config.task_type_query
         )
         return embeddings[0] if embeddings else []
+
+    def get_api_call_count(self) -> int:
+        """
+        Get the number of API calls made.
+
+        Returns:
+            Number of API calls
+        """
+        return self.api_call_count
+
+    def reset_api_call_count(self):
+        """Reset the API call counter."""
+        self.api_call_count = 0
     
     def _embed_batch_with_retry(
         self, 
@@ -134,14 +148,17 @@ class Embedder:
     def _embed_batch(self, texts: List[str], task_type: str) -> List[List[float]]:
         """
         Embed a batch of texts using Gemini API.
-        
+
         Args:
             texts: Batch of texts
             task_type: Task type
-            
+
         Returns:
             List of embedding vectors
         """
+        # Increment API call counter
+        self.api_call_count += 1
+
         if self.use_new_sdk:
             # New google-genai SDK
             config = types.EmbedContentConfig(

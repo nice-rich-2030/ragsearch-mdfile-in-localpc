@@ -32,6 +32,7 @@ class UpdateSummary:
     deleted: int
     unchanged: int
     total_chunks: int
+    api_call_count: int
 
 
 class Indexer:
@@ -116,54 +117,60 @@ class Indexer:
     def update(self) -> UpdateSummary:
         """
         Perform differential index update.
-        
+
         Returns:
             UpdateSummary with statistics
         """
         logger.info("Starting index update...")
-        
+
+        # Reset API call counter
+        self.embedder.reset_api_call_count()
+
         # Scan for changes
         scan_result = self.scan()
-        
+
         logger.info(
             f"Scan complete: {len(scan_result.new_files)} new, "
             f"{len(scan_result.updated_files)} updated, "
             f"{len(scan_result.deleted_files)} deleted, "
             f"{len(scan_result.unchanged_files)} unchanged"
         )
-        
+
         # Process deletions
         for path in scan_result.deleted_files:
             logger.debug(f"Deleting: {path}")
             self.vector_store.delete_by_file(path)
             self.file_db.delete_file(path)
-        
+
         # Process new and updated files
         files_to_process = scan_result.new_files + scan_result.updated_files
-        
+
         for path in files_to_process:
             try:
                 self._process_file(path, is_update=(path in scan_result.updated_files))
             except Exception as e:
                 logger.error(f"Failed to process {path}: {e}")
-        
-        # Get total chunks
+
+        # Get total chunks and API call count
         total_chunks = self.vector_store.count()
-        
+        api_call_count = self.embedder.get_api_call_count()
+
         summary = UpdateSummary(
             added=len(scan_result.new_files),
             updated=len(scan_result.updated_files),
             deleted=len(scan_result.deleted_files),
             unchanged=len(scan_result.unchanged_files),
-            total_chunks=total_chunks
+            total_chunks=total_chunks,
+            api_call_count=api_call_count
         )
-        
+
         logger.info(
             f"Index update complete: {summary.added} added, "
             f"{summary.updated} updated, {summary.deleted} deleted, "
-            f"{summary.total_chunks} total chunks"
+            f"{summary.total_chunks} total chunks, "
+            f"{summary.api_call_count} API calls"
         )
-        
+
         return summary
     
     def _process_file(self, relative_path: str, is_update: bool = False):
@@ -199,18 +206,24 @@ class Indexer:
             return
         
         logger.debug(f"  Generated {len(chunks)} chunks")
-        
+
         # Generate embeddings
         texts = [chunk.content for chunk in chunks]
+        logger.debug(f"  Generating embeddings for {len(texts)} chunks...")
         embeddings = self.embedder.embed_texts(texts)
-        
+        logger.debug(f"  Embeddings generated: {len(embeddings)} vectors")
+
         # Add to vector store
+        logger.debug(f"  Adding chunks to vector store...")
         self.vector_store.add_chunks(relative_path, chunks, embeddings)
-        
+        logger.debug(f"  Chunks added to vector store")
+
         # Update file database
+        logger.debug(f"  Updating file database...")
         file_hash = self._compute_hash(full_path)
         file_mtime = full_path.stat().st_mtime
         self.file_db.upsert_file(relative_path, file_hash, file_mtime)
+        logger.debug(f"  File processing complete: {relative_path}")
     
     def _collect_files(self) -> Dict[str, float]:
         """

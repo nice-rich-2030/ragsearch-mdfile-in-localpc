@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir:*)",
+      "Bash(Remove-Item -Recurse -Force test-chroma -ErrorAction SilentlyContinue)",
+      "Bash(Remove-Item -Recurse -Force test-docs.rag-index -ErrorAction SilentlyContinue)",
+      "Bash(Remove-Item -Recurse -Force test-docs.rag -ErrorAction SilentlyContinue)"
+    ]
+  }
+}

@@ -17,6 +17,11 @@ import os
 import sys
 from pathlib import Path
 
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
 # MCP SDKのインポート
 try:
     from mcp import ClientSession, StdioServerParameters
@@ -74,9 +79,11 @@ async def test_mcp_server():
                 print("-" * 70)
                 print("Test 1: reindex ツール")
                 print("-" * 70)
-                
+                print("インデックスを構築中... (初回は数分かかる場合があります)")
+                print("詳細ログ: rag_server.log を確認してください")
+
                 result = await session.call_tool("reindex", {})
-                print("結果:")
+                print("\n結果:")
                 for content in result.content:
                     if hasattr(content, 'text'):
                         print(content.text)

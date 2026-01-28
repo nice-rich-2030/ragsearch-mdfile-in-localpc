@@ -8,6 +8,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Dict
 
+from dotenv import load_dotenv
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp import types
@@ -17,6 +18,9 @@ from .db import FileDB, VectorStore
 from .embedder import Embedder
 from .searcher import Searcher
 from .indexer import Indexer
+
+# Load environment variables from .env file
+load_dotenv()
 
 
 # Global instances
@@ -46,21 +50,28 @@ def timer(label: str):
 def setup_logging(verbose: bool = False):
     """
     Setup logging configuration.
-    
+
     Args:
         verbose: Enable DEBUG level logging
     """
     global logger
-    
+
     level = logging.DEBUG if verbose else logging.INFO
-    
+
+    # Create handlers
+    handlers = [
+        logging.StreamHandler(sys.stderr),
+        logging.FileHandler('rag_server.log', encoding='utf-8')
+    ]
+
     logging.basicConfig(
         level=level,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        handlers=[logging.StreamHandler(sys.stderr)]
+        handlers=handlers
     )
-    
+
     logger = logging.getLogger(__name__)
+    logger.info(f"Logging initialized (verbose={verbose})")
 
 
 def initialize_components(docs_dir: Path, data_dir: Path):
@@ -166,22 +177,23 @@ async def handle_search(query: str, top_k: int = None) -> Dict[str, Any]:
 async def handle_reindex() -> Dict[str, Any]:
     """
     Handle reindex request.
-    
+
     Returns:
         Reindex summary dictionary
     """
     logger.info("Reindex request received")
-    
+
     with timer("reindex_total"):
         summary = indexer.update()
-    
+
     # Format response
     return {
         "added": summary.added,
         "updated": summary.updated,
         "deleted": summary.deleted,
         "unchanged": summary.unchanged,
-        "total_chunks": summary.total_chunks
+        "total_chunks": summary.total_chunks,
+        "api_call_count": summary.api_call_count
     }
 
 
@@ -262,7 +274,7 @@ def create_server(docs_dir: Path, data_dir: Path) -> Server:
             
             elif name == "reindex":
                 result = await handle_reindex()
-                
+
                 text = (
                     f"Index update complete:\n"
                     f"  Added: {result['added']}\n"
@@ -270,8 +282,9 @@ def create_server(docs_dir: Path, data_dir: Path) -> Server:
                     f"  Deleted: {result['deleted']}\n"
                     f"  Unchanged: {result['unchanged']}\n"
                     f"  Total chunks: {result['total_chunks']}\n"
+                    f"  API calls: {result['api_call_count']}\n"
                 )
-                
+
                 return [types.TextContent(
                     type="text",
                     text=text

@@ -1,14 +1,17 @@
 """Database layer for file metadata and vector storage."""
 
 import sqlite3
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional
 import chromadb
-from chromadb.config import Settings
 
 from .config import ChromaDBConfig
 from .chunker import Chunk
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -129,32 +132,28 @@ class VectorStore:
         self.persist_dir = persist_dir
         self.persist_dir.mkdir(parents=True, exist_ok=True)
         self.config = config
-        
-        # Initialize ChromaDB client
-        self.client = chromadb.PersistentClient(
-            path=str(persist_dir)
-        )
-        
-        # Get or create collection
+
+        # Initialize ChromaDB client (simplified for ChromaDB 1.4.1)
+        logger.debug(f"Initializing ChromaDB client at {persist_dir}")
+        self.client = chromadb.PersistentClient(path=str(persist_dir))
+        logger.debug("ChromaDB client initialized")
+
+        # Get or create collection (simplified metadata for ChromaDB 1.4.1)
+        logger.debug(f"Getting or creating collection: {config.collection_name}")
         self.collection = self.client.get_or_create_collection(
-            name=config.collection_name,
-            metadata={
-                "hnsw:space": config.hnsw_space,
-                "hnsw:construction_ef": config.hnsw_construction_ef,
-                "hnsw:search_ef": config.hnsw_search_ef,
-                "hnsw:M": config.hnsw_M
-            }
+            name=config.collection_name
         )
+        logger.debug(f"Collection ready: {config.collection_name}")
     
     def add_chunks(
-        self, 
-        file_path: str, 
-        chunks: List[Chunk], 
+        self,
+        file_path: str,
+        chunks: List[Chunk],
         embeddings: List[List[float]]
     ):
         """
         Add chunks with embeddings to the collection.
-        
+
         Args:
             file_path: Relative file path
             chunks: List of Chunk objects
@@ -162,13 +161,14 @@ class VectorStore:
         """
         if not chunks or not embeddings:
             return
-        
+
         if len(chunks) != len(embeddings):
             raise ValueError(
                 f"Chunks and embeddings length mismatch: "
                 f"{len(chunks)} vs {len(embeddings)}"
             )
-        
+
+        logger.debug(f"    Preparing {len(chunks)} chunks for ChromaDB...")
         ids = [f"{file_path}::chunk_{chunk.chunk_index}" for chunk in chunks]
         documents = [chunk.content for chunk in chunks]
         metadatas = [
@@ -179,13 +179,15 @@ class VectorStore:
             }
             for chunk in chunks
         ]
-        
+
+        logger.debug(f"    Calling ChromaDB collection.add()...")
         self.collection.add(
             ids=ids,
             documents=documents,
             embeddings=embeddings,
             metadatas=metadatas
         )
+        logger.debug(f"    ChromaDB collection.add() completed")
     
     def delete_by_file(self, file_path: str):
         """

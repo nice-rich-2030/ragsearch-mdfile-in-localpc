@@ -127,7 +127,12 @@ cp .env.example .env
 
 ## 🚀 使い方
 
-### スタンドアロン実行
+### 動作テスト１　スタンドアロン実行
+
+下記では、MCPサーバーを起動を確認：
+　MCPサーバープロセスが起動
+　stdio（標準入出力）経由で通信待機状態になる
+　直接ユーザーが対話することはできない、データベースもファイルを作成するが中身は空。
 
 ```bash
 # 基本的な使い方
@@ -140,47 +145,7 @@ python -m src.server --docs-dir /path/to/documents --verbose
 python -m src.server --docs-dir /path/to/documents --data-dir /path/to/data
 ```
 
-### Claude Codeとの連携
-
-#### 設定ファイルの編集
-
-`.claude.json`または`claude_desktop_config.json`に以下を追加:
-
-```json
-{
-  "mcpServers": {
-    "local-rag": {
-      "command": "python",
-      "args": [
-        "-m", "src.server",
-        "--docs-dir", "/absolute/path/to/your/documents"
-      ],
-      "cwd": "/absolute/path/to/rag-tst1",
-      "env": {
-        "GEMINI_API_KEY": "your_api_key_here"
-      }
-    }
-  }
-}
-```
-
-#### Claude Codeでの使用例
-
-```
-ユーザー: 「このプロジェクトのREADMEから、インストール手順を教えて」
-
-Claude: [searchツールを使用]
-→ 関連する文書チャンクを取得
-→ インストール手順を回答
-
-ユーザー: 「Pythonのエラーハンドリングのベストプラクティスは?」
-
-Claude: [searchツールを使用]
-→ ローカルドキュメントから関連情報を検索
-→ ベストプラクティスを説明
-```
-
-### PythonからMCPサーバーをテスト
+### 動作テスト２　PythonからMCPサーバーをテスト
 
 MCPサーバーをプログラム的に呼び出して動作確認できます。
 
@@ -249,6 +214,48 @@ Heading: ## Windowsでのインストール
 - `testing-guide.txt` - テストの書き方
 
 ---
+
+
+
+### Claude Codeとの連携
+
+#### 設定ファイルの編集
+
+`.claude.json`または`claude_desktop_config.json`に以下を追加:
+
+```json
+{
+  "mcpServers": {
+    "local-rag": {
+      "command": "python",
+      "args": [
+        "-m", "src.server",
+        "--docs-dir", "/absolute/path/to/your/documents"
+      ],
+      "cwd": "/absolute/path/to/rag-tst1",
+      "env": {
+        "GEMINI_API_KEY": "your_api_key_here"
+      }
+    }
+  }
+}
+```
+
+#### Claude Codeでの使用例
+
+```
+ユーザー: 「このプロジェクトのREADMEから、インストール手順を教えて」
+
+Claude: [searchツールを使用]
+→ 関連する文書チャンクを取得
+→ インストール手順を回答
+
+ユーザー: 「Pythonのエラーハンドリングのベストプラクティスは?」
+
+Claude: [searchツールを使用]
+→ ローカルドキュメントから関連情報を検索
+→ ベストプラクティスを説明
+```
 
 
 ## 🛠️ 利用可能なツール

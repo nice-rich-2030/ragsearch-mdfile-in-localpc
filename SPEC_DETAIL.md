@@ -227,9 +227,9 @@
   class SearchResult:
       file_path: str       # ファイルの相対パス
       content: str         # チャンク内容
-      heading: str         # 所属見出し
+      heading: str         # 見出し（.txtの場合は空文字）
       score: float         # 類似度スコア（0〜1、高いほど類似）
-      chunk_index: int     # ファイル内順序
+      chunk_index: int     # チャンクのインデックス番号
   ```
 - **他ファイルとの連携**:
   - `embedder.py` → クエリのベクトル化
