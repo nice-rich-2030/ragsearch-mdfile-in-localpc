@@ -1,7 +1,7 @@
 [project]
-name = "rag-tst1"
+name = "ragsearch-mdfile-in-localpc"
 version = "1.0.0"
-description = "Local RAG with MCP and FastAPI - Semantic search for local documents"
+description = "Local RAG with MCP and FastAPI - Semantic search for local Markdown/text documents"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
@@ -28,9 +28,9 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/yourusername/rag-tst1"
-Documentation = "https://github.com/yourusername/rag-tst1#readme"
-Repository = "https://github.com/yourusername/rag-tst1"
+Homepage = "https://github.com/nice-rich-2030/ragsearch-mdfile-in-localpc"
+Documentation = "https://github.com/nice-rich-2030/ragsearch-mdfile-in-localpc#readme"
+Repository = "https://github.com/nice-rich-2030/ragsearch-mdfile-in-localpc"
 
 [build-system]
 requires = ["setuptools>=61.0"]

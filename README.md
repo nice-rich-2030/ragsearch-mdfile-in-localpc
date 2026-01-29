@@ -108,8 +108,8 @@ Gemini Embedding APIとChromaDBを使用した、高速・高精度なセマン�
 ### 1. リポジトリのクローン
 
 ```bash
-git clone https://github.com/yourusername/rag-tst1.git
-cd rag-tst1
+git clone https://github.com/nice-rich-2030/ragsearch-mdfile-in-localpc.git
+cd ragsearch-mdfile-in-localpc
 ```
 
 ### 2. 依存パッケージのインストール
