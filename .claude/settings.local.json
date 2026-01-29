@@ -10,7 +10,8 @@
       "Skill(program-spec)",
       "Skill(program-spec:*)",
       "Bash(python:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(pip install:*)"
     ]
   }
 }
