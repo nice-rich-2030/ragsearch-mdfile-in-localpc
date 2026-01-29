@@ -4,7 +4,13 @@
       "Bash(dir:*)",
       "Bash(Remove-Item -Recurse -Force test-chroma -ErrorAction SilentlyContinue)",
       "Bash(Remove-Item -Recurse -Force test-docs.rag-index -ErrorAction SilentlyContinue)",
-      "Bash(Remove-Item -Recurse -Force test-docs.rag -ErrorAction SilentlyContinue)"
+      "Bash(Remove-Item -Recurse -Force test-docs.rag -ErrorAction SilentlyContinue)",
+      "Bash(tree:*)",
+      "Bash(chmod:*)",
+      "Skill(program-spec)",
+      "Skill(program-spec:*)",
+      "Bash(python:*)",
+      "Bash(find:*)"
     ]
   }
 }

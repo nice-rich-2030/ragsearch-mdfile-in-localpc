@@ -1,0 +1,56 @@
+[project]
+name = "rag-tst1"
+version = "1.0.0"
+description = "Local RAG with MCP and FastAPI - Semantic search for local documents"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "Antigravity AI"}
+]
+keywords = ["rag", "mcp", "fastapi", "semantic-search", "gemini", "chromadb"]
+
+dependencies = [
+    "google-genai>=0.2.0",
+    "chromadb==0.4.24",
+    "pyyaml>=6.0",
+    "mcp>=0.1.0",
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.27.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "httpx>=0.26.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/yourusername/rag-tst1"
+Documentation = "https://github.com/yourusername/rag-tst1#readme"
+Repository = "https://github.com/yourusername/rag-tst1"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "C4"]
+ignore = ["E501"]

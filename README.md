@@ -1,14 +1,15 @@
-# ローカルRAG MCPサーバー
+# ローカルRAG MCP & FastAPI
 
 <div align="center">
 
-**Claude Codeからローカル文書を自然言語で検索**
+**Claude CodeからもHTTP APIからもローカル文書を自然言語で検索**
 
 [![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![MCP](https://img.shields.io/badge/MCP-Compatible-purple.svg)](https://modelcontextprotocol.io/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.109+-009688.svg)](https://fastapi.tiangolo.com/)
 
-Gemini Embedding APIとChromaDBを使用した、高速・高精度なセマンティック検索MCPサーバー
+Gemini Embedding APIとChromaDBを使用した、高速・高精度なセマンティック検索サーバー
 
 [特徴](#-特徴) • [インストール](#-インストール) • [使い方](#-使い方) • [設定](#-設定)
 
@@ -18,7 +19,11 @@ Gemini Embedding APIとChromaDBを使用した、高速・高精度なセマン�
 
 ## 📖 概要
 
-ローカルRAG MCPサーバーは、あなたのローカルに蓄積されたMarkdown/テキストファイルを、Claude Codeから自然言語で検索できるようにするツールです。
+ローカルRAGは、あなたのローカルに蓄積されたMarkdown/テキストファイルを自然言語で検索できるようにするツールです。
+
+**2つのインターフェースを提供:**
+- **MCPサーバー**: Claude Codeから直接利用
+- **FastAPI Web API**: HTTP経由で任意のアプリケーションから利用
 
 ### 💡 解決する課題
 
@@ -97,7 +102,7 @@ Gemini Embedding APIとChromaDBを使用した、高速・高精度なセマン�
 ## 📦 インストール
 
 ### 前提条件
-- Python 3.11以上
+- Python 3.10以上
 - Gemini API Key（[取得はこちら](https://aistudio.google.com/app/apikey)）
 
 ### 1. リポジトリのクローン
@@ -110,7 +115,11 @@ cd rag-tst1
 ### 2. 依存パッケージのインストール
 
 ```bash
-pip install -r requirements.txt
+# 本番用パッケージのみ
+pip install -e .
+
+# 開発用パッケージも含める（テスト実行など）
+pip install -e ".[dev]"
 ```
 
 ### 3. 環境変数の設定
@@ -127,7 +136,56 @@ cp .env.example .env
 
 ## 🚀 使い方
 
-### 動作テスト１　スタンドアロン実行
+### 方法1: FastAPI Web API（HTTP経由）
+
+#### 1. 環境変数設定
+
+`.env`ファイルを作成または編集:
+
+```env
+GEMINI_API_KEY=your_api_key_here
+DOCS_DIR=/path/to/your/documents
+DATA_DIR=/path/to/data  # Optional
+```
+
+#### 2. FastAPIサーバー起動
+
+```bash
+# Windows
+scripts\start_api.bat
+
+# Linux/Mac
+./scripts/start_api.sh
+
+# または直接Uvicornで起動
+uvicorn src.api.app:app --host 0.0.0.0 --port 8000 --reload
+```
+
+#### 3. Swagger UIでテスト
+
+ブラウザで http://localhost:8000/docs を開く
+
+#### 4. curlで検索実行
+
+```bash
+curl -X POST http://localhost:8000/api/v1/search \
+  -H "Content-Type: application/json" \
+  -d '{"query": "Pythonのインストール方法", "top_k": 3}'
+```
+
+#### 5. インデックス更新
+
+```bash
+curl -X POST http://localhost:8000/api/v1/index/rebuild \
+  -H "Content-Type: application/json" \
+  -d '{}'
+```
+
+---
+
+### 方法2: MCPサーバー（Claude Codeから）
+
+#### 動作テスト１　スタンドアロン実行
 
 下記では、MCPサーバーを起動を確認：
 　MCPサーバープロセスが起動
@@ -136,13 +194,13 @@ cp .env.example .env
 
 ```bash
 # 基本的な使い方
-python -m src.server --docs-dir /path/to/documents
+python -m src.mcp.server --docs-dir /path/to/documents
 
 # デバッグモード（詳細ログ・時間計測）
-python -m src.server --docs-dir /path/to/documents --verbose
+python -m src.mcp.server --docs-dir /path/to/documents --verbose
 
 # データディレクトリを指定
-python -m src.server --docs-dir /path/to/documents --data-dir /path/to/data
+python -m src.mcp.server --docs-dir /path/to/documents --data-dir /path/to/data
 ```
 
 ### 動作テスト２　PythonからMCPサーバーをテスト
@@ -229,7 +287,7 @@ Heading: ## Windowsでのインストール
     "local-rag": {
       "command": "python",
       "args": [
-        "-m", "src.server",
+        "-m", "src.mcp.server",
         "--docs-dir", "/absolute/path/to/your/documents"
       ],
       "cwd": "/absolute/path/to/rag-tst1",
@@ -366,9 +424,12 @@ ValueError: GEMINI_API_KEY or GOOGLE_API_KEY environment variable must be set
 # Claude Codeから
 reindexツールを実行
 
-# または直接
-python -m src.server --docs-dir /path/to/docs --verbose
+# MCPサーバーから
+python -m src.mcp.server --docs-dir /path/to/docs --verbose
 # → 初回起動時に自動構築
+
+# FastAPI経由
+curl -X POST http://localhost:8000/api/v1/index/rebuild -H "Content-Type: application/json" -d '{}'
 ```
 
 ### 検索結果が0件
@@ -389,13 +450,41 @@ embedding:
 
 ---
 
+## 📂 プロジェクト構造
+
+```
+rag-tst1/
+├── docs/
+│   ├── mcp/                # MCP向け仕様書
+│   └── api/                # FastAPI向け仕様書
+├── src/
+│   ├── shared/             # 共有ビジネスロジック
+│   ├── mcp/                # MCPサーバー
+│   └── api/                # FastAPI Web API
+├── tests/
+│   ├── shared/             # 共有モジュールテスト
+│   ├── mcp/                # MCPテスト
+│   ├── api/                # FastAPIテスト
+│   └── debug/              # デバッグツール
+├── scripts/                # 起動スクリプト
+└── config.yaml             # 共通設定
+```
+
+---
+
 ## 📚 ドキュメント
 
-- **[SPEC.md](SPEC.md)**: 仕様書（課題分析、機能定義、技術スタック）
-- **[SPEC_DETAIL.md](SPEC_DETAIL.md)**: 詳細設計書（各モジュールの実装詳細）
-- **[SPEC_LOGIC.md](SPEC_LOGIC.md)**: ロジック設計書（アルゴリズム詳細）
-- **[SPEC_VALIDATION.md](SPEC_VALIDATION.md)**: 整合性検証書
-- **[IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md)**: 実装サマリー
+### MCP向け
+- **[docs/mcp/SPEC.md](docs/mcp/SPEC.md)**: 仕様書
+- **[docs/mcp/SPEC_DETAIL.md](docs/mcp/SPEC_DETAIL.md)**: 詳細設計書
+- **[docs/mcp/SPEC_LOGIC.md](docs/mcp/SPEC_LOGIC.md)**: ロジック設計書
+- **[docs/mcp/SPEC_VALIDATION.md](docs/mcp/SPEC_VALIDATION.md)**: 整合性検証書
+
+### FastAPI向け
+- **[docs/api/SPEC.md](docs/api/SPEC.md)**: 仕様書
+- **[docs/api/SPEC_DETAIL.md](docs/api/SPEC_DETAIL.md)**: 詳細設計書
+- **[docs/api/SPEC_LOGIC.md](docs/api/SPEC_LOGIC.md)**: ロジック設計書
+- **[docs/api/SPEC_VALIDATION.md](docs/api/SPEC_VALIDATION.md)**: 整合性検証書
 
 ---
 
@@ -410,7 +499,11 @@ pytest tests/
 ### デバッグモード
 
 ```bash
-python -m src.server --docs-dir /path/to/documents --verbose
+# MCPサーバー
+python -m src.mcp.server --docs-dir /path/to/documents --verbose
+
+# FastAPIサーバー（自動リロード有効）
+uvicorn src.api.app:app --reload
 ```
 
 詳細なタイミング情報とデバッグログが出力されます:
@@ -420,6 +513,98 @@ python -m src.server --docs-dir /path/to/documents --verbose
 [TIMER] chromadb_query: 8.2ms
 [TIMER] search_total: 502.1ms
 ```
+
+### デバッグツール
+
+インデックスの状態確認やチャンク分割のデバッグに使用できるツールを提供しています。
+
+#### 1. ChromaDBダンプツール
+
+インデックスに登録されている全ドキュメントを表示します。
+
+```bash
+python tests/debug/dump_chromadb.py ./test-docs
+```
+
+**出力例:**
+```
+File: error-handling.md (14 chunks)
+--- Chunk 1/14 ---
+  heading: # エラーハンドリングのベストプラクティス1
+  content: (49 chars)
+  [FOUND] Contains search text!
+```
+
+#### 2. チャンク分割デバッグツール
+
+ファイルがどのようにチャンクに分割されるかを確認します。
+
+```bash
+python tests/debug/debug_chunker.py ./test-docs/error-handling.md
+```
+
+**出力例:**
+```
+Generated 14 chunks:
+Chunk 0 (index=0):
+  Heading: # エラーハンドリングのベストプラクティス1
+  Length: 49 chars
+  Coverage: 100.0%
+```
+
+#### 3. 詳細チャンク分割デバッグツール
+
+チャンク分割の詳細なステップを確認します。どのセクションが`min_chunk_chars`でフィルタリングされたかを表示します。
+
+```bash
+python tests/debug/debug_chunker_verbose.py ./test-docs/error-handling.md
+```
+
+**出力例:**
+```
+Section 1: heading='## 基本原則'
+  Content length: 49 chars
+  [PASS] Size check OK
+```
+
+#### 4. test-docs再インデックスツール
+
+test-docsフォルダの再インデックスを実行します。設定変更後の動作確認に便利です。
+
+```bash
+python tests/debug/reindex_test_docs.py
+```
+
+**出力例:**
+```
+================================================================================
+Reindex Test Docs
+================================================================================
+Docs dir: D:\src\rag-tst1\test-docs
+Data dir: D:\src\rag-tst1\test-docs\.rag-index
+
+Config loaded:
+  min_chunk_chars: 10
+  max_chunk_chars: 3000
+
+Running indexer...
+
+================================================================================
+Reindex complete!
+================================================================================
+Added: 4
+Updated: 0
+Deleted: 0
+Unchanged: 0
+Total chunks: 75
+API calls: 4
+```
+
+**デバッグツール一覧:**
+- **[tests/debug/dump_chromadb.py](tests/debug/dump_chromadb.py)**: ChromaDB内の全ドキュメント表示
+- **[tests/debug/debug_chunker.py](tests/debug/debug_chunker.py)**: チャンク分割の確認
+- **[tests/debug/debug_chunker_verbose.py](tests/debug/debug_chunker_verbose.py)**: チャンク分割の詳細分析
+- **[tests/debug/reindex_test_docs.py](tests/debug/reindex_test_docs.py)**: test-docs再インデックス
 
 ### データのリセット
 

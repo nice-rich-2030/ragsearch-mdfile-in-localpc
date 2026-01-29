@@ -9,7 +9,7 @@ embedding:
 # === チャンク分割設定 ===
 chunker:
   max_chunk_chars: 3000                   # チャンクサイズ上限（文字数）
-  min_chunk_chars: 50                     # これ以下のチャンクは破棄
+  min_chunk_chars: 10                     # これ以下のチャンクは破棄（50→10に変更）
   heading_levels: [1, 2, 3]              # Markdown分割に使う見出しレベル
 
 # === ChromaDB設定 ===

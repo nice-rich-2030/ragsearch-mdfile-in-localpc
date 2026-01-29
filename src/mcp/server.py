@@ -13,11 +13,11 @@ from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp import types
 
-from .config import load_config
-from .db import FileDB, VectorStore
-from .embedder import Embedder
-from .searcher import Searcher
-from .indexer import Indexer
+from ..shared.config import load_config
+from ..shared.db import FileDB, VectorStore
+from ..shared.embedder import Embedder
+from ..shared.searcher import Searcher
+from ..shared.indexer import Indexer
 
 # Load environment variables from .env file
 load_dotenv()

@@ -52,7 +52,7 @@ async def test_mcp_server():
     # サーバーパラメータ設定
     server_params = StdioServerParameters(
         command="python",
-        args=["-m", "src.server", "--docs-dir", str(test_docs_dir), "--verbose"],
+        args=["-m", "src.mcp.server", "--docs-dir", str(test_docs_dir), "--verbose"],
         env={
             **os.environ,
             "GEMINI_API_KEY": os.getenv("GEMINI_API_KEY", "")
