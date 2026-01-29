@@ -648,7 +648,7 @@ MIT License - 詳細は[LICENSE](LICENSE)を参照してください。
 
 <div align="center">
 
-**Made with ❤️ by Antigravity AI**
+**Made with ❤️ by Claude code**
 
 ⭐ このプロジェクトが役に立ったら、スターをお願いします！
 
