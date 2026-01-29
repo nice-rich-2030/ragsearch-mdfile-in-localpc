@@ -337,31 +337,6 @@
         <div class="flex justify-start animate-fade-in-up">
             <div class="message-bot max-w-[90%] md:max-w-[80%] rounded-2xl rounded-tl-sm px-6 py-5 shadow-sm">
                 <div class="content markdown-content text-slate-300"></div>
-
-                <!-- References Section -->
-                <div class="mt-4 pt-3 border-t border-white/5">
-                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">References</p>
-                    <div class="references-list flex flex-col gap-2">
-                        <!-- Reference items will be injected here -->
-                    </div>
-                </div>
-            </div>
-        </div>
-    </template>
-
-    <template id="template-reference-item">
-        <div
-            class="group flex items-start gap-3 p-2 rounded-lg hover:bg-white/5 transition-colors cursor-pointer border border-transparent hover:border-white/5">
-            <div
-                class="mt-0.5 w-6 h-6 rounded flex items-center justify-center bg-slate-800 text-slate-500 group-hover:text-sky-400 group-hover:bg-slate-700 transition-colors shrink-0 font-mono text-xs">
-                <span class="ref-index">1</span>
-            </div>
-            <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2">
-                    <p class="text-xs font-medium text-sky-400 truncate ref-file">filename.md</p>
-                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-500 ref-score">98%</span>
-                </div>
-                <!-- <p class="text-xs text-slate-400 mt-0.5 line-clamp-2 leading-relaxed ref-preview">Snippet content...</p> -->
             </div>
         </div>
     </template>
@@ -377,7 +352,8 @@
     </template>
 
     <script>
-        const API_BASE = 'http://localhost:8000/api/v1';
+        //const API_BASE = 'http://localhost:8000/api/v1';
+        const API_BASE = 'http://192.168.11.4:8000/api/v1'; //お使いの環境に合わせて設定。
         const CHAT_HISTORY_LIMIT = 10;
         let chatHistory = []; // Stores displayed messages
         let lastReindexTime = null;
@@ -616,41 +592,63 @@
                 if (data.error) {
                     contentEl.textContent = data.content;
                     contentEl.classList.add('text-red-400');
-                    clone.querySelector('.references-list').parentElement.remove();
                 } else {
                     contentEl.innerHTML = `<p>I found ${data.results.length} relevant sections for <strong>"${data.query}"</strong>:</p>`;
 
-                    const refList = clone.querySelector('.references-list');
-
                     if (data.results.length === 0) {
                         contentEl.innerHTML = `<p>No relevant documents found for <strong>"${data.query}"</strong>.</p>`;
-                        refList.parentElement.remove();
                     } else {
-                        data.results.forEach((item, idx) => {
-                            const refTmpl = document.getElementById('template-reference-item');
-                            const refClone = refTmpl.content.cloneNode(true);
+                        // Top 3 results (always visible)
+                        const topResults = data.results.slice(0, 3);
+                        const moreResults = data.results.slice(3);
 
-                            refClone.querySelector('.ref-index').textContent = idx + 1;
-                            refClone.querySelector('.ref-file').textContent = item.file_path;
-                            refClone.querySelector('.ref-score').textContent = Math.round(item.score * 100) + '%';
-
-                            const resultDiv = document.createElement('div');
-                            resultDiv.classList.add('mt-2', 'p-3', 'bg-slate-800/50', 'rounded-lg', 'border', 'border-white/5');
-                            resultDiv.innerHTML = `
-                                <div class="flex items-center gap-2 mb-1 text-sky-400 text-xs font-mono border-b border-white/5 pb-1">
-                                    <span class="w-5 h-5 flex items-center justify-center rounded bg-slate-700 text-white">${idx + 1}</span>
-                                    <span class="truncate">${item.heading || 'No Heading'}</span>
-                                </div>
-                                <div class="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap mb-2">${escapeHtml(item.content)}</div>
-                                <div class="text-[10px] text-slate-500 flex items-center gap-1.5 border-t border-white/5 pt-1.5 mt-1.5">
-                                    <i class="fa-regular fa-file"></i>
-                                    <span class="font-mono select-all">${item.file_path}</span>
-                                </div>
-                            `;
-
+                        topResults.forEach((item, idx) => {
+                            const resultDiv = createResultElement(item, idx);
                             contentEl.appendChild(resultDiv);
-                            refList.appendChild(refClone);
                         });
+
+                        // Remaining results (collapsible)
+                        if (moreResults.length > 0) {
+                            const toggleId = 'toggle-' + Date.now();
+                            const collapseId = 'collapse-' + Date.now();
+
+                            // Toggle button
+                            const toggleBtn = document.createElement('button');
+                            toggleBtn.id = toggleId;
+                            toggleBtn.className = 'mt-3 mb-2 flex items-center gap-2 text-xs text-slate-400 hover:text-sky-400 transition-colors';
+                            toggleBtn.innerHTML = `
+                                <i class="fa-solid fa-chevron-right transition-transform duration-200" id="${toggleId}-icon"></i>
+                                <span>Show ${moreResults.length} more result${moreResults.length > 1 ? 's' : ''}</span>
+                            `;
+                            toggleBtn.onclick = function () {
+                                const collapse = document.getElementById(collapseId);
+                                const icon = document.getElementById(toggleId + '-icon');
+                                const isHidden = collapse.classList.contains('hidden');
+
+                                if (isHidden) {
+                                    collapse.classList.remove('hidden');
+                                    icon.classList.add('rotate-90');
+                                    this.querySelector('span').textContent = `Hide ${moreResults.length} more result${moreResults.length > 1 ? 's' : ''}`;
+                                } else {
+                                    collapse.classList.add('hidden');
+                                    icon.classList.remove('rotate-90');
+                                    this.querySelector('span').textContent = `Show ${moreResults.length} more result${moreResults.length > 1 ? 's' : ''}`;
+                                }
+                            };
+                            contentEl.appendChild(toggleBtn);
+
+                            // Collapsible container
+                            const collapseDiv = document.createElement('div');
+                            collapseDiv.id = collapseId;
+                            collapseDiv.className = 'hidden';
+
+                            moreResults.forEach((item, idx) => {
+                                const resultDiv = createResultElement(item, idx + 3);
+                                collapseDiv.appendChild(resultDiv);
+                            });
+
+                            contentEl.appendChild(collapseDiv);
+                        }
                     }
                 }
 
@@ -669,6 +667,30 @@
                 .replace(/>/g, "&gt;")
                 .replace(/"/g, "&quot;")
                 .replace(/'/g, "&#039;");
+        }
+
+        function createResultElement(item, idx) {
+            const resultDiv = document.createElement('div');
+            resultDiv.classList.add('mt-2', 'p-3', 'bg-slate-800/50', 'rounded-lg', 'border', 'border-white/5');
+
+            const scorePercent = Math.round(item.score * 100);
+
+            resultDiv.innerHTML = `
+                <div class="flex items-center gap-2 mb-1 text-sky-400 text-xs font-mono border-b border-white/5 pb-1">
+                    <span class="w-5 h-5 flex items-center justify-center rounded bg-slate-700 text-white">${idx + 1}</span>
+                    <span class="truncate">${item.heading || 'No Heading'}</span>
+                </div>
+                <div class="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap mb-2">${escapeHtml(item.content)}</div>
+                <div class="text-[10px] text-slate-500 flex items-center justify-between gap-1.5 border-t border-white/5 pt-1.5 mt-1.5">
+                    <div class="flex items-center gap-1.5 flex-1 min-w-0">
+                        <i class="fa-regular fa-file shrink-0"></i>
+                        <span class="font-mono select-all truncate">${item.file_path}</span>
+                    </div>
+                    <span class="text-[10px] px-2 py-0.5 rounded bg-slate-700 text-sky-400 font-semibold shrink-0">${scorePercent}%</span>
+                </div>
+            `;
+
+            return resultDiv;
         }
 
         function showLoading() {

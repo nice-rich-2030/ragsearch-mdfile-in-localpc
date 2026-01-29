@@ -181,6 +181,41 @@ curl -X POST http://localhost:8000/api/v1/index/rebuild \
   -d '{}'
 ```
 
+#### 6. 複数サーバーの同時起動（複数フォルダ対応）
+
+異なるフォルダを対象にした複数のサーバーを同時に起動する場合、各サーバーは異なるポートで起動します。
+
+**バッチスクリプトで起動（Windows）:**
+
+`scripts/start_multi_servers.bat`:
+
+```batch
+@echo off
+REM 複数のFastAPIサーバーを起動
+
+start "RAG Server 1" cmd /k "set DOCS_DIR=C:\path\to\docs1 && uvicorn src.api.app:app --host 0.0.0.0 --port 8000"
+
+start "RAG Server 2" cmd /k "set DOCS_DIR=C:\path\to\docs2 && uvicorn src.api.app:app --host 0.0.0.0 --port 8001"
+
+start "RAG Server 3" cmd /k "set DOCS_DIR=C:\path\to\docs3 && uvicorn src.api.app:app --host 0.0.0.0 --port 8002"
+
+echo All servers started!
+```
+
+**使い方:**
+1. `C:\path\to\docs1` などを実際のドキュメントフォルダパスに変更
+2. バッチファイルを実行すると、3つの新しいコマンドプロンプトウィンドウが開き、各サーバーが起動
+3. 各サーバーには以下のURLでアクセス可能:
+   - サーバー1: http://localhost:8000/docs
+   - サーバー2: http://localhost:8001/docs
+   - サーバー3: http://localhost:8002/docs
+
+
+**注意事項:**
+- 各サーバーは独立したインデックスを持ちます
+- 異なるポートを使用する必要があります（8000, 8001, 8002など）
+- 各サーバーのデータディレクトリは、デフォルトで `{DOCS_DIR}/.rag-index` に作成されます
+
 ---
 
 ### 方法2: MCPサーバー（Claude Codeから）
