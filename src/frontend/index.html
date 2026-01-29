@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Local RAG Search</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #0f172a;
+            background-image:
+                radial-gradient(at 0% 0%, hsla(253, 16%, 7%, 1) 0, transparent 50%),
+                radial-gradient(at 50% 0%, hsla(225, 39%, 30%, 1) 0, transparent 50%),
+                radial-gradient(at 100% 0%, hsla(339, 49%, 30%, 1) 0, transparent 50%);
+            background-attachment: fixed;
+            color: #e2e8f0;
+        }
+
+        .glass {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .glass-header {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .glass-input {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .message-user {
+            background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
+        }
+
+        .message-bot {
+            background: rgba(51, 65, 85, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* Markdown generated content styles */
+        .markdown-content h1 {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 0.5em;
+            color: #f8fafc;
+        }
+
+        .markdown-content h2 {
+            font-size: 1.25em;
+            font-weight: bold;
+            margin-top: 1em;
+            margin-bottom: 0.5em;
+            color: #f1f5f9;
+        }
+
+        .markdown-content h3 {
+            font-size: 1.1em;
+            font-weight: bold;
+            margin-top: 0.8em;
+            margin-bottom: 0.4em;
+            color: #e2e8f0;
+        }
+
+        .markdown-content p {
+            margin-bottom: 0.8em;
+            line-height: 1.6;
+        }
+
+        .markdown-content ul {
+            list-style-type: disc;
+            padding-left: 1.5em;
+            margin-bottom: 0.8em;
+        }
+
+        .markdown-content ol {
+            list-style-type: decimal;
+            padding-left: 1.5em;
+            margin-bottom: 0.8em;
+        }
+
+        .markdown-content code {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 0.2em 0.4em;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.9em;
+            color: #e0f2fe;
+        }
+
+        .markdown-content pre {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 1em;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin-bottom: 1em;
+        }
+
+        .markdown-content pre code {
+            background: transparent;
+            padding: 0;
+            color: inherit;
+        }
+
+        .markdown-content a {
+            color: #38bdf8;
+            text-decoration: none;
+            border-bottom: 1px dashed rgba(56, 189, 248, 0.5);
+        }
+
+        .markdown-content a:hover {
+            border-bottom-style: solid;
+        }
+
+        .loading-dots span {
+            animation: bounce 1.4s infinite ease-in-out both;
+            display: inline-block;
+            margin: 0 2px;
+            width: 6px;
+            height: 6px;
+            background-color: #94a3b8;
+            border-radius: 50%;
+        }
+
+        .loading-dots span:nth-child(1) {
+            animation-delay: -0.32s;
+        }
+
+        .loading-dots span:nth-child(2) {
+            animation-delay: -0.16s;
+        }
+
+        @keyframes bounce {
+
+            0%,
+            80%,
+            100% {
+                transform: scale(0);
+            }
+
+            40% {
+                transform: scale(1);
+            }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Wide Mode Support */
+        .message-bot {
+            transition: max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body.wide-mode .message-bot {
+            max-width: 96% !important;
+        }
+
+        /* Fix for reindex animation robustness */
+        #btn-reindex.reindexing .fa-rotate {
+            animation: spin 1s linear infinite !important;
+        }
+    </style>
+</head>
+
+<body class="h-screen flex flex-col font-sans overflow-hidden antialiased selection:bg-sky-500/30">
+
+    <!-- Header -->
+    <header class="glass-header h-16 flex items-center justify-between px-6 z-10 shrink-0">
+        <div class="flex items-center gap-3">
+            <div
+                class="w-8 h-8 rounded-lg bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-sky-500/20">
+                <i class="fa-solid fa-magnifying-glass text-white text-sm"></i>
+            </div>
+            <h1
+                class="font-semibold text-lg tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
+                Local RAG Search
+            </h1>
+        </div>
+        <div class="flex items-center gap-4 text-xs font-medium text-slate-400">
+            <!-- Width Toggle -->
+            <button id="btn-toggle-width" onclick="toggleWidth()"
+                class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-800/50 border border-white/5 transition-all hover:bg-slate-700 hover:text-white"
+                title="Toggle Message Width">
+                <i class="fa-solid fa-arrows-left-right"></i>
+                <span id="width-label">Standard Width</span>
+            </button>
+
+            <div id="scheduler-status"
+                class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-800/50 border border-white/5 transition-colors hover:bg-slate-800">
+                <span class="relative flex h-2 w-2">
+                    <span
+                        class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                Scheduler Active (Every :15)
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Chat Area -->
+    <main id="chat-container" class="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-6 scroll-smooth">
+        <!-- Welcome Message -->
+        <div class="flex justify-start">
+            <div class="message-bot max-w-[85%] md:max-w-[70%] rounded-2xl rounded-tl-sm px-6 py-4 shadow-sm">
+                <p class="text-slate-200">
+                    Hello! I'm your local document assistant. Ask me anything about your files, and I'll find the
+                    relevant information for you.
+                </p>
+                <div class="flex flex-wrap gap-2 mt-4">
+                    <button
+                        class="text-xs bg-slate-700/50 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-full transition-colors border border-white/5"
+                        onclick="setInput('How to install?')">How to install?</button>
+                    <button
+                        class="text-xs bg-slate-700/50 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-full transition-colors border border-white/5"
+                        onclick="setInput('Configuration guide')">Configuration guide</button>
+                    <button
+                        class="text-xs bg-slate-700/50 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-full transition-colors border border-white/5"
+                        onclick="setInput('API usage examples')">API usage examples</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Controls & Input -->
+    <footer class="shrink-0 p-4 pt-2">
+        <div class="max-w-4xl mx-auto space-y-4">
+
+            <!-- Index Status Bar -->
+            <div
+                class="glass rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400 transition-all duration-300">
+                <div class="flex items-center gap-4">
+                    <div class="flex gap-1.5">
+                        <i class="fa-regular fa-clock mt-0.5"></i>
+                        <span>Last Index: <span id="last-index-time"
+                                class="text-slate-200 font-mono">--:--</span></span>
+                    </div>
+                </div>
+
+                <div id="index-stats" class="hidden flex items-center gap-3">
+                    <span class="text-emerald-400"><i class="fa-solid fa-plus mr-1"></i><span id="stat-added">0</span>
+                        Added files</span>
+                    <span class="text-amber-400"><i class="fa-solid fa-pen mr-1"></i><span id="stat-updated">0</span>
+                        Updated files</span>
+                    <span class="text-slate-300"><i class="fa-solid fa-file mr-1"></i><span id="stat-total">0</span>
+                        total chunks</span>
+                </div>
+
+                <button id="btn-reindex" onclick="triggerReindex()"
+                    class="group flex items-center gap-2 bg-slate-700/50 hover:bg-sky-600 hover:text-white px-3 py-1.5 rounded-lg transition-all duration-200 border border-white/10 hover:border-sky-500/50 hover:shadow-lg hover:shadow-sky-500/20">
+                    <i class="fa-solid fa-rotate group-hover:animate-spin-once"></i>
+                    <span>Force Reindex</span>
+                </button>
+            </div>
+
+            <!-- Input Area -->
+            <div class="relative group">
+                <div
+                    class="absolute -inset-0.5 bg-gradient-to-r from-sky-500 to-indigo-500 rounded-2xl opacity-20 group-hover:opacity-40 transition duration-300 blur-sm">
+                </div>
+                <div
+                    class="relative flex items-end gap-2 bg-slate-900/90 rounded-2xl p-2 border border-white/10 ring-1 ring-white/5">
+                    <textarea id="user-input" rows="1" placeholder="Ask a question about your documents..."
+                        class="w-full bg-transparent text-slate-200 placeholder-slate-500 px-4 py-3 focus:outline-none resize-none max-h-32 text-sm leading-relaxed"
+                        onkeydown="handleKeydown(event)"
+                        oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'"></textarea>
+
+                    <button onclick="sendMessage()"
+                        class="mb-1 mr-1 p-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white shadow-lg shadow-sky-500/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                        id="btn-send">
+                        <i class="fa-solid fa-paper-plane text-sm"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="text-center">
+                <p class="text-[10px] text-slate-600 font-medium">Local RAG • Gemini Powered • Fast Search</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Templates -->
+    <template id="template-user-msg">
+        <div class="flex justify-end animate-fade-in-up">
+            <div
+                class="message-user max-w-[85%] md:max-w-[70%] rounded-2xl rounded-tr-sm px-5 py-3 shadow-md text-white">
+                <p class="content leading-relaxed"></p>
+            </div>
+        </div>
+    </template>
+
+    <template id="template-bot-msg">
+        <div class="flex justify-start animate-fade-in-up">
+            <div class="message-bot max-w-[90%] md:max-w-[80%] rounded-2xl rounded-tl-sm px-6 py-5 shadow-sm">
+                <div class="content markdown-content text-slate-300"></div>
+
+                <!-- References Section -->
+                <div class="mt-4 pt-3 border-t border-white/5">
+                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">References</p>
+                    <div class="references-list flex flex-col gap-2">
+                        <!-- Reference items will be injected here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <template id="template-reference-item">
+        <div
+            class="group flex items-start gap-3 p-2 rounded-lg hover:bg-white/5 transition-colors cursor-pointer border border-transparent hover:border-white/5">
+            <div
+                class="mt-0.5 w-6 h-6 rounded flex items-center justify-center bg-slate-800 text-slate-500 group-hover:text-sky-400 group-hover:bg-slate-700 transition-colors shrink-0 font-mono text-xs">
+                <span class="ref-index">1</span>
+            </div>
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2">
+                    <p class="text-xs font-medium text-sky-400 truncate ref-file">filename.md</p>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-500 ref-score">98%</span>
+                </div>
+                <!-- <p class="text-xs text-slate-400 mt-0.5 line-clamp-2 leading-relaxed ref-preview">Snippet content...</p> -->
+            </div>
+        </div>
+    </template>
+
+    <template id="template-loading">
+        <div class="flex justify-start" id="loading-indicator">
+            <div class="message-bot rounded-2xl rounded-tl-sm px-5 py-4 shadow-sm">
+                <div class="loading-dots text-slate-400">
+                    <span></span><span></span><span></span>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <script>
+        const API_BASE = 'http://localhost:8000/api/v1';
+        const CHAT_HISTORY_LIMIT = 10;
+        let chatHistory = []; // Stores displayed messages
+        let lastReindexTime = null;
+
+        // --- Width Management ---
+        function toggleWidth() {
+            const isWide = document.body.classList.toggle('wide-mode');
+            localStorage.setItem('wideMode', isWide);
+            updateWidthUI(isWide);
+        }
+
+        function updateWidthUI(isWide) {
+            const label = document.getElementById('width-label');
+            const btn = document.getElementById('btn-toggle-width');
+            if (isWide) {
+                label.textContent = 'Full Width';
+                btn.classList.add('bg-sky-500/20', 'text-sky-400', 'border-sky-500/20');
+            } else {
+                label.textContent = 'Standard Width';
+                btn.classList.remove('bg-sky-500/20', 'text-sky-400', 'border-sky-500/20');
+            }
+        }
+
+        // Initialize Width from storage
+        if (localStorage.getItem('wideMode') === 'true') {
+            document.body.classList.add('wide-mode');
+            updateWidthUI(true);
+        }
+
+        // Initialize Chat History from storage
+        function loadChatHistory() {
+            const saved = localStorage.getItem('chatHistory');
+            if (saved) {
+                try {
+                    chatHistory = JSON.parse(saved);
+                    // Re-render each message
+                    chatHistory.forEach(item => {
+                        renderMessage(item.role, item.data);
+                    });
+                } catch (e) {
+                    console.error("Failed to load history", e);
+                    chatHistory = [];
+                }
+            }
+        }
+
+        // --- Scheduler Logic ---
+        function checkScheduler() {
+            const now = new Date();
+            const minutes = now.getMinutes();
+            // Run at minute 15
+            // To prevent multiple runs in the same minute, we track "lastRunHour"
+            const currentHour = now.getHours();
+
+            const lastRunProp = localStorage.getItem('lastSchedulerRunHour');
+            const lastRunHour = lastRunProp ? parseInt(lastRunProp) : -1;
+
+            if (minutes === 15 && lastRunHour !== currentHour) {
+                console.log("Scheduler triggered: Starting reindex...", now);
+                triggerReindex(true); // true = automated
+                localStorage.setItem('lastSchedulerRunHour', currentHour);
+            }
+        }
+
+        // Check every minute (60000ms)
+        setInterval(checkScheduler, 60000);
+        // Also check on load
+        checkScheduler();
+        loadChatHistory();
+        loadIndexStats();
+
+        // --- UI Logic ---
+
+        function setInput(text) {
+            const input = document.getElementById('user-input');
+            input.value = text;
+            input.focus();
+            input.style.height = '';
+            input.style.height = input.scrollHeight + 'px';
+        }
+
+        function handleKeydown(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        }
+
+        function scrollToBottom() {
+            const container = document.getElementById('chat-container');
+            container.scrollTop = container.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('user-input');
+            const text = input.value.trim();
+            if (!text) return;
+
+            input.value = '';
+            input.style.height = 'auto';
+            input.disabled = true;
+
+            // Render User Message
+            addMessageToUI('user', { content: text });
+
+            // Show Loading
+            showLoading();
+            scrollToBottom();
+
+            try {
+                const response = await fetch(`${API_BASE}/search`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: text, top_k: 5 })
+                });
+
+                if (!response.ok) throw new Error("API Request failed");
+                const data = await response.json();
+
+                removeLoading();
+                addMessageToUI('bot', data);
+
+            } catch (err) {
+                console.error(err);
+                removeLoading();
+                addMessageToUI('bot', {
+                    error: true,
+                    content: "Sorry, I encountered an error while searching. Please verify the server is running."
+                });
+            } finally {
+                input.disabled = false;
+                input.focus();
+                scrollToBottom();
+                trimHistory();
+            }
+        }
+
+        async function triggerReindex(isAutomated = false) {
+            const btn = document.getElementById('btn-reindex');
+
+            if (!isAutomated) {
+                btn.disabled = true;
+                btn.classList.add('reindexing');
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/index/rebuild`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+
+                const data = await response.json();
+                updateStats(data);
+
+                // Show toast or log
+                console.log("Reindex complete", data);
+
+            } catch (err) {
+                console.error("Reindex failed", err);
+            } finally {
+                if (!isAutomated) {
+                    btn.disabled = false;
+                    btn.classList.remove('reindexing');
+                }
+            }
+        }
+
+        function updateStats(data, savedTime = null) {
+            let timeStr;
+            if (savedTime) {
+                timeStr = savedTime;
+            } else {
+                // Update time
+                const now = new Date();
+                timeStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+                localStorage.setItem('lastIndexStats', JSON.stringify({ data, timeStr }));
+            }
+
+            document.getElementById('last-index-time').textContent = timeStr;
+
+            // Update details
+            document.getElementById('stat-added').textContent = data.added;
+            document.getElementById('stat-updated').textContent = data.updated;
+            document.getElementById('stat-total').textContent = data.total_chunks;
+
+            document.getElementById('index-stats').classList.remove('hidden');
+        }
+
+        function loadIndexStats() {
+            const saved = localStorage.getItem('lastIndexStats');
+            if (saved) {
+                try {
+                    const { data, timeStr } = JSON.parse(saved);
+                    updateStats(data, timeStr);
+                } catch (e) {
+                    console.error("Failed to load index stats", e);
+                }
+            }
+        }
+
+        function addMessageToUI(role, data) {
+            // Store and save
+            chatHistory.push({ role, data });
+            trimHistoryData();
+            localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
+
+            // Render
+            renderMessage(role, data);
+        }
+
+        function trimHistoryData() {
+            // Keep last 10 interactions (approx 20 messages)
+            const limit = CHAT_HISTORY_LIMIT * 2;
+            if (chatHistory.length > limit) {
+                chatHistory = chatHistory.slice(-limit);
+            }
+        }
+
+        function renderMessage(role, data) {
+            const container = document.getElementById('chat-container');
+
+            if (role === 'user') {
+                const tmpl = document.getElementById('template-user-msg');
+                const clone = tmpl.content.cloneNode(true);
+                clone.querySelector('.content').textContent = data.content;
+                const wrapper = document.createElement('div');
+                wrapper.classList.add('chat-message-item');
+                wrapper.appendChild(clone);
+                container.appendChild(wrapper);
+            } else {
+                const tmpl = document.getElementById('template-bot-msg');
+                const clone = tmpl.content.cloneNode(true);
+
+                const contentEl = clone.querySelector('.content');
+                if (data.error) {
+                    contentEl.textContent = data.content;
+                    contentEl.classList.add('text-red-400');
+                    clone.querySelector('.references-list').parentElement.remove();
+                } else {
+                    contentEl.innerHTML = `<p>I found ${data.results.length} relevant sections for <strong>"${data.query}"</strong>:</p>`;
+
+                    const refList = clone.querySelector('.references-list');
+
+                    if (data.results.length === 0) {
+                        contentEl.innerHTML = `<p>No relevant documents found for <strong>"${data.query}"</strong>.</p>`;
+                        refList.parentElement.remove();
+                    } else {
+                        data.results.forEach((item, idx) => {
+                            const refTmpl = document.getElementById('template-reference-item');
+                            const refClone = refTmpl.content.cloneNode(true);
+
+                            refClone.querySelector('.ref-index').textContent = idx + 1;
+                            refClone.querySelector('.ref-file').textContent = item.file_path;
+                            refClone.querySelector('.ref-score').textContent = Math.round(item.score * 100) + '%';
+
+                            const resultDiv = document.createElement('div');
+                            resultDiv.classList.add('mt-2', 'p-3', 'bg-slate-800/50', 'rounded-lg', 'border', 'border-white/5');
+                            resultDiv.innerHTML = `
+                                <div class="flex items-center gap-2 mb-1 text-sky-400 text-xs font-mono border-b border-white/5 pb-1">
+                                    <span class="w-5 h-5 flex items-center justify-center rounded bg-slate-700 text-white">${idx + 1}</span>
+                                    <span class="truncate">${item.heading || 'No Heading'}</span>
+                                </div>
+                                <div class="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap mb-2">${escapeHtml(item.content)}</div>
+                                <div class="text-[10px] text-slate-500 flex items-center gap-1.5 border-t border-white/5 pt-1.5 mt-1.5">
+                                    <i class="fa-regular fa-file"></i>
+                                    <span class="font-mono select-all">${item.file_path}</span>
+                                </div>
+                            `;
+
+                            contentEl.appendChild(resultDiv);
+                            refList.appendChild(refClone);
+                        });
+                    }
+                }
+
+                const wrapper = document.createElement('div');
+                wrapper.classList.add('chat-message-item');
+                wrapper.appendChild(clone);
+                container.appendChild(wrapper);
+            }
+            scrollToBottom();
+        }
+
+        function escapeHtml(text) {
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        function showLoading() {
+            const tmpl = document.getElementById('template-loading');
+            const clone = tmpl.content.cloneNode(true);
+            const wrapper = document.createElement('div');
+            wrapper.id = 'active-loading-msg';
+            wrapper.appendChild(clone);
+            document.getElementById('chat-container').appendChild(wrapper);
+        }
+
+        function removeLoading() {
+            const el = document.getElementById('active-loading-msg');
+            if (el) el.remove();
+        }
+
+        function trimHistory() {
+            const container = document.getElementById('chat-container');
+            const items = container.getElementsByClassName('chat-message-item');
+            // Keep UI in sync with backend data limit
+            const limit = CHAT_HISTORY_LIMIT * 2;
+            while (items.length > limit) {
+                items[0].remove();
+            }
+        }
+    </script>
+</body>
+
+</html>
